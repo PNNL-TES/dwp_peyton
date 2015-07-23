@@ -6,6 +6,7 @@ source("0-functions.R")
 SCRIPTNAME  	<- "2-summarize.R"
 RAWDATA      <- paste0(OUTPUT_DIR, "rawdata.csv.gz")  # output from script 1
 
+library(stringr)
 
 # ==============================================================================
 # Main 
@@ -26,7 +27,14 @@ rawdata <- subset(rawdata, MPVPosition == trunc(MPVPosition))
 
 # Make true dates
 printlog( "Converting date/time info to POSIXct..." )
-rawdata$DATETIME <- ymd_hms(paste(rawdata$DATE, rawdata$TIME))
+rawdata$DATETIME <- ymd_hms(paste(rawdata$DATE, rawdata$TIME), tz="America/Los_Angeles")
+# Force Picarro timestamps to Pacific time (UTC -8:00)
+printlog("Picarro timestamps to Pacific time")
+rawdata$DATETIME <- rawdata$DATETIME - 60 * 60 * 8
+printlog("First timestamp:")
+print(min(rawdata$DATETIME))
+printlog("Last timestamp:")
+print(max(rawdata$DATETIME))
 
 printlog( "Sorting by date..." )
 rawdata <- arrange(rawdata, DATETIME)
@@ -37,25 +45,26 @@ printlog("Assigning sample numbers...")
 oldsampleflag <- with(rawdata, c(FALSE, MPVPosition[-length(MPVPosition)] == MPVPosition[-1]))
 rawdata$samplenum <- cumsum(!oldsampleflag)
 
-FLUXWINDOW_S <- c(5, 120)
 
-printlog("Computing elapsed seconds...")
+FLUXWINDOW_S <- c(5, 120)
+printlog("Computing elapsed seconds using flux window of", FLUXWINDOW_S, "...")
 rawdata_trunc <- rawdata %>%
   group_by(samplenum) %>%
   mutate(elapsed_seconds = (FRAC_HRS_SINCE_JAN1 - min(FRAC_HRS_SINCE_JAN1)) * 60 * 60) %>%
   filter(elapsed_seconds >= min(FLUXWINDOW_S) & elapsed_seconds <= max(FLUXWINDOW_S))
 
-# Force Picarro timestamps to Pacific time (UTC -8:00)
-printlog("Picarro timestamps to Pacific time (though still prints UTC)")
-rawdata$DATETIME <- rawdata$DATETIME - 60 * 60 * 8
-
 # Load MPVPosition map
 printlog("Loading valve map data...")
 valvemap <- read_csv("data/DWP2014_Respiration Sample Key_21July2015.csv")
 printlog( "Converting date/time info to POSIXct..." )
-valvemap$STARTDATE <- mdy(valvemap$STARTDATE)
-valvemap$ENDDATE <- mdy(valvemap$ENDDATE)
+valvemap$STARTDATE <- mdy(valvemap$STARTDATE, tz="America/Los_Angeles")
+valvemap$ENDDATE <- mdy(valvemap$ENDDATE, tz="America/Los_Angeles")
 valvemap$valvemaprow <- 1:nrow(valvemap)
+printlog("Trimming whitespace from categorical fields...")
+valvemap$WETTING <- str_trim(valvemap$WETTING)
+valvemap$INPUT <- str_trim(valvemap$INPUT)
+valvemap$MOISTURE <- str_trim(valvemap$MOISTURE)
+valvemap$STRUCTURE <- str_trim(valvemap$STRUCTURE)
 
 # Function to match up Picarro data with mapping file data--done by date and valve number
 matchfun <- function(DATETIME, MPVPosition) {
@@ -91,7 +100,18 @@ summarydata <- rawdata_trunc %>%
 printlog("Merging Picarro and mapping data...")
 summarydata <- merge(summarydata, valvemap, by=c("MPVPosition", "valvemaprow"), all.x=TRUE)
 
-# Done!
+printlog("Number of samples for each core:")
+print(summarydata %>% group_by(CORE) %>% summarise(n()) %>% as.data.frame())
+
+printlog("Summaries for max_CH4 and max_CO2:")
+summary(summarydata$max_CO2)
+summary(summarydata$max_CH4)
+
+# Done! Drop unnecessary columns and save
+
+summarydata <- subset(summarydata, 
+                      select=-c(MPVPosition, valvemaprow, samplenum,
+                                EPOCH_TIME, ALARM_STATUS, INST_STATUS))	
 save_data(summarydata, scriptfolder=FALSE)
 
 printlog("All done with", SCRIPTNAME)

@@ -1,2 +1,2 @@
 # dwp_peyton
-Peyton's Picarro data from DWP
+Core for processing Peyton's Picarro data from DWP.

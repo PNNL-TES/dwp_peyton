@@ -6,7 +6,6 @@ source("0-functions.R")
 SCRIPTNAME  	<- "3-plots.R"
 SUMMARYDATA      <- paste0(OUTPUT_DIR, "summarydata.csv")  # output from script 2
 
-
 # ==============================================================================
 # Main 
 
@@ -16,16 +15,29 @@ printlog("Welcome to", SCRIPTNAME)
 
 printlog("Reading in summary data...")
 summarydata <- read_csv(SUMMARYDATA)
-summarydata$DATETIME <- ymd_hms(summarydata$DATETIME)
+summarydata$DATETIME <- ymd_hms(summarydata$DATETIME, tz="America/Los_Angeles")
 print_dims(summarydata)
 print(summary(summarydata))
 
-p <- ggplot(summarydata, aes(DATETIME, hour(DATETIME), color=samplenum))
-p <- p + geom_point() + ggtitle("QC - measurement time of day")
+summarydata <- subset(summarydata, !is.na(CORE))
+
+p <- ggplot(summarydata, aes(DATETIME, CORE, color=STRUCTURE)) + geom_point()
+p <- p + ggtitle("QC - measurement time of day")
 print(p)
 save_plot("QC_time_of_day")
 
-print(p + geom_)
+sdata <- subset(summarydata, CORE != "Ambient")
+
+p <- ggplot(sdata, aes(MOISTURE, max_CO2, color=INPUT)) + geom_boxplot()
+p <- p + facet_grid(STRUCTURE~WETTING)
+print(p)
+save_plot("QC_CO2")
+
+p <- ggplot(sdata, aes(MOISTURE, max_CH4, color=INPUT)) + geom_boxplot()
+p <- p + facet_grid(STRUCTURE~WETTING)
+print(p)
+save_plot("QC_CH4")
+
 printlog("All done with", SCRIPTNAME)
 print(sessionInfo())
 sink() # close log
