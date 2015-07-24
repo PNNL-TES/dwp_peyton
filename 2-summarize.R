@@ -48,7 +48,7 @@ rawdata$samplenum <- cumsum(!oldsampleflag)
 
 FLUXWINDOW_S <- c(5, 120)
 printlog("Computing elapsed seconds using flux window of", FLUXWINDOW_S, "...")
-rawdata_trunc <- rawdata %>%
+rawdata_samples <- rawdata %>%
   group_by(samplenum) %>%
   mutate(elapsed_seconds = (FRAC_HRS_SINCE_JAN1 - min(FRAC_HRS_SINCE_JAN1)) * 60 * 60) %>%
   filter(elapsed_seconds >= min(FLUXWINDOW_S) & elapsed_seconds <= max(FLUXWINDOW_S))
@@ -76,7 +76,7 @@ matchfun <- function(DATETIME, MPVPosition) {
 }
 
 printlog( "Computing summary statistics for each sample..." )
-summarydata <- rawdata_trunc %>%
+summarydata <- rawdata_samples %>%
   group_by(samplenum) %>%
   summarise(
     EPOCH_TIME = mean(EPOCH_TIME),
@@ -87,8 +87,14 @@ summarydata <- rawdata_trunc %>%
     MPVPosition	= mean(MPVPosition),
     
     #    fluxwindow_s = FLUXWINDOW_S,
+    min_CO2 = min(CO2_dry),
+    min_CO2_time = nth(elapsed_seconds, which.min(CO2_dry)),
+    min_CH4 = min(CH4_dry),
+    min_CH4_time = nth(elapsed_seconds, which.min(CO2_dry)),
     max_CO2 = max(CO2_dry),
+    max_CO2_time = nth(elapsed_seconds, which.max(CO2_dry)),
     max_CH4 = max(CH4_dry),
+    max_CH4_time = nth(elapsed_seconds, which.max(CO2_dry)),
     
     h2o_reported = mean(h2o_reported),
     
@@ -113,6 +119,7 @@ summarydata <- subset(summarydata,
                       select=-c(MPVPosition, valvemaprow, samplenum,
                                 EPOCH_TIME, ALARM_STATUS, INST_STATUS))	
 save_data(summarydata, scriptfolder=FALSE)
+save_data(rawdata_samples, scriptfolder=FALSE, gzip=TRUE)
 
 printlog("All done with", SCRIPTNAME)
 print(sessionInfo())
