@@ -5,6 +5,7 @@ source("0-functions.R")
 
 SCRIPTNAME  	<- "4-plots.R"
 FLUXDATA      <- paste0(OUTPUT_DIR, "fluxdata.csv")  # output from script 3
+RAWDATA_SAMPLES      <- paste0(OUTPUT_DIR, "rawdata_samples.csv.gz")  # output from script 2
 
 # ==============================================================================
 # Main 
@@ -47,6 +48,12 @@ p <- ggplot(sdata, aes(MOISTURE, CH4_flux_mgC_s, color=INPUT)) + geom_boxplot()
 p <- p + facet_grid(STRUCTURE~WETTING)
 print(p)
 save_plot("QC_CH4")
+
+# QC negative-flux data
+negs <- subset(sdata, CO2_flux_mgC_s < 0.0)
+rawdata_negs <- read_csv(RAWDATA_SAMPLES) %>% filter(samplenum %in% negs$samplenum)
+
+
 
 printlog("All done with", SCRIPTNAME)
 print(sessionInfo())

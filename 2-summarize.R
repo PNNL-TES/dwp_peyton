@@ -46,12 +46,11 @@ oldsampleflag <- with(rawdata, c(FALSE, MPVPosition[-length(MPVPosition)] == MPV
 rawdata$samplenum <- cumsum(!oldsampleflag)
 
 
-FLUXWINDOW_S <- c(5, 120)
-printlog("Computing elapsed seconds using flux window of", FLUXWINDOW_S, "...")
+printlog("Computing elapsed seconds...")
 rawdata_samples <- rawdata %>%
   group_by(samplenum) %>%
-  mutate(elapsed_seconds = (FRAC_HRS_SINCE_JAN1 - min(FRAC_HRS_SINCE_JAN1)) * 60 * 60) %>%
-  filter(elapsed_seconds >= min(FLUXWINDOW_S) & elapsed_seconds <= max(FLUXWINDOW_S))
+  mutate(elapsed_seconds = (FRAC_HRS_SINCE_JAN1 - min(FRAC_HRS_SINCE_JAN1)) * 60 * 60) #%>%
+#  filter(elapsed_seconds >= min(FLUXWINDOW_S) & elapsed_seconds <= max(FLUXWINDOW_S))
 
 # Load MPVPosition map
 printlog("Loading valve map data...")
@@ -66,7 +65,28 @@ valvemap$INPUT <- str_trim(valvemap$INPUT)
 valvemap$MOISTURE <- str_trim(valvemap$MOISTURE)
 valvemap$STRUCTURE <- str_trim(valvemap$STRUCTURE)
 
-# Function to match up Picarro data with mapping file data--done by date and valve number
+printlog("Visualizing valve map...")
+p <- ggplot(valvemap, aes(STARTDATE, MPVPosition, xend=ENDDATE, yend=MPVPosition, color=CORE))
+p <- p + geom_segment(size=2) + scale_color_discrete(guide=FALSE)
+p <- p + geom_text(aes(label=CORE), size=4, hjust=.5, vjust=-.5)
+p <- p + ggtitle("Valve map data (showing core numbers")
+print(p)
+save_plot("valvemap")
+
+# QC the valve map
+dupes <- valvemap %>% 
+  group_by(paste(STARTDATE, ENDDATE), MPVPosition, CORE) %>% 
+  summarise(n=n()) %>% 
+  filter(n > 1)
+if(nrow(dupes)) {
+  printlog("WARNING - MULTIPLE CORES ASSIGNED TO A VALVE ON A GIVEN DATE")
+  print(dupes)
+  printlog("WARNING - this will screw up the matching to Picarro data")
+}
+
+
+# Function to match up Picarro data with mapping file data
+# This is done by date and valve number (see plot saved above)
 matchfun <- function(DATETIME, MPVPosition) {
   row <- which(DATETIME >= valvemap$STARTDATE & 
                  DATETIME <= valvemap$ENDDATE & 
@@ -76,35 +96,49 @@ matchfun <- function(DATETIME, MPVPosition) {
 }
 
 printlog( "Computing summary statistics for each sample..." )
-summarydata <- rawdata_samples %>%
+# The window in which we look for min and max concentrations
+MAX_MINCONC_TIME <- 10  # the minimum concentration has to occur in first 10 s
+MIN_MAXCONC_TIME <- 2  # the maximum concentration can't occur in first 2 s
+
+# We want to apply different criteria here, so three different pipelines
+# to compute the min and max gas concentrations
+summarydata_min <- rawdata_samples %>%
+  filter(elapsed_seconds <= MAX_MINCONC_TIME) %>%
   group_by(samplenum) %>%
   summarise(
-    EPOCH_TIME = mean(EPOCH_TIME),
-    DATETIME = mean(DATETIME), #floor_date(mean(DATETIME), "day"),
-    ALARM_STATUS = mean(ALARM_STATUS),
-    INST_STATUS	= mean(INST_STATUS),
-    N = n(),
-    MPVPosition	= mean(MPVPosition),
-    
-    #    fluxwindow_s = FLUXWINDOW_S,
     min_CO2 = min(CO2_dry),
     min_CO2_time = nth(elapsed_seconds, which.min(CO2_dry)),
     min_CH4 = min(CH4_dry),
-    min_CH4_time = nth(elapsed_seconds, which.min(CO2_dry)),
+    min_CH4_time = nth(elapsed_seconds, which.min(CH4_dry))
+  )
+
+summarydata_max <- rawdata_samples %>%
+  filter(elapsed_seconds >= MIN_MAXCONC_TIME) %>%
+  group_by(samplenum) %>%
+  summarise(
     max_CO2 = max(CO2_dry),
     max_CO2_time = nth(elapsed_seconds, which.max(CO2_dry)),
     max_CH4 = max(CH4_dry),
-    max_CH4_time = nth(elapsed_seconds, which.max(CO2_dry)),
-    
-    h2o_reported = mean(h2o_reported),
-    
-    valvemaprow = matchfun(floor_date(mean(DATETIME), "day"), MPVPosition)
-  ) %>%
-  arrange(samplenum)
+    max_CH4_time = nth(elapsed_seconds, which.max(CH4_dry))
+  )
 
+summarydata_other <- rawdata_samples %>%
+  group_by(samplenum) %>%
+  summarise(
+    DATETIME = mean(DATETIME),
+    N = n(),
+    MPVPosition	= mean(MPVPosition),
+    h2o_reported = mean(h2o_reported),
+    valvemaprow = matchfun(floor_date(mean(DATETIME), "day"), MPVPosition)
+  )
+
+# Merge pieces together to form final summary data set
+summarydata <- summarydata_other %>%
+  left_join(summarydata_max, by="samplenum") %>% 
+  left_join(summarydata_min, by="samplenum")
 
 printlog("Merging Picarro and mapping data...")
-summarydata <- merge(summarydata, valvemap, by=c("MPVPosition", "valvemaprow"), all.x=TRUE)
+summarydata <- left_join(summarydata, valvemap, by=c("MPVPosition", "valvemaprow"), all.x=TRUE)
 
 printlog("Number of samples for each core:")
 print(summarydata %>% group_by(CORE) %>% summarise(n()) %>% as.data.frame())
@@ -113,12 +147,22 @@ printlog("Summaries for max_CH4 and max_CO2:")
 summary(summarydata$max_CO2)
 summary(summarydata$max_CH4)
 
+core_na <- filter(summarydata, is.na(CORE))
+printlog("NOTE:", nrow(core_na), "samples have no matching core numbers; removing")
+save_data(core_na, scriptfolder = FALSE)
+
+printlog("NOTE: cores in the valve map but not in the summary data:")
+print(setdiff(valvemap$CORE, summarydata$CORE))
+
 # Done! Drop unnecessary columns and save
 
-summarydata <- subset(summarydata, 
-                      select=-c(MPVPosition, valvemaprow, samplenum,
-                                EPOCH_TIME, ALARM_STATUS, INST_STATUS))	
+summarydata <- summarydata %>%
+  filter(!is.na(CORE)) %>%
+  select(-MPVPosition, -valvemaprow)
+
 save_data(summarydata, scriptfolder=FALSE)
+
+#summarydata <- subset(summarydata, !is.na(CORE), select=-c(MPVPosition, valvemaprow))	
 save_data(rawdata_samples, scriptfolder=FALSE, gzip=TRUE)
 
 printlog("All done with", SCRIPTNAME)
