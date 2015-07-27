@@ -61,11 +61,14 @@ fluxdata$CH4_flux_umol_g_s <- m_CH4 / 1e6 * # from ppm/s to mole fraction/s
 fluxdata$CO2_flux_mgC_s <- with(fluxdata, CO2_flux_umol_g_s * DRYWT_SOIL_G) / # get rid of /g soil
   1e6 * # to mol 
   12 *  # to g C
-  1000  # to mg C
+  1000 * # to mg C
+  60 * 60 * 24 # to /day
+
 fluxdata$CH4_flux_mgC_s <- with(fluxdata, CH4_flux_umol_g_s * DRYWT_SOIL_G) / # get rid of /g soil
   1e6 * # to mol 
   16 *  # to g C
-  1000  # to mg C
+  1000 *  # to mg C
+  60 * 60 * 24 # to /day
 
 fluxdata <- fluxdata[complete.cases(fluxdata),]
 

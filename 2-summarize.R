@@ -1,4 +1,7 @@
 # Process Picarro data for Peyton's DWP lab experiment
+# This script summarizes individual Picarro observations to summaries
+# of "samples" (groups of observations made from a given core at some
+# point in time)
 # Ben Bond-Lamberty July 2015
 
 source("0-functions.R")
@@ -66,16 +69,16 @@ valvemap$MOISTURE <- str_trim(valvemap$MOISTURE)
 valvemap$STRUCTURE <- str_trim(valvemap$STRUCTURE)
 
 printlog("Visualizing valve map...")
-p <- ggplot(valvemap, aes(STARTDATE, MPVPosition, xend=ENDDATE, yend=MPVPosition, color=CORE))
-p <- p + geom_segment(size=2) + scale_color_discrete(guide=FALSE)
-p <- p + geom_text(aes(label=CORE), size=4, hjust=.5, vjust=-.5)
-p <- p + ggtitle("Valve map data (showing core numbers")
+p <- ggplot(valvemap, aes(STARTDATE, MPVPosition, xend=ENDDATE, yend=MPVPosition, color=STRUCTURE))
+p <- p + geom_segment(size=2)
+p <- p + geom_text(aes(label=CORE), size=4, hjust=.5, vjust=-.5, show_guide=FALSE)
+p <- p + ggtitle("Valve map data (showing core numbers)")
 print(p)
 save_plot("valvemap")
 
 # QC the valve map
 dupes <- valvemap %>% 
-  group_by(paste(STARTDATE, ENDDATE), MPVPosition, CORE) %>% 
+  group_by(paste(STARTDATE, ENDDATE), MPVPosition) %>% 
   summarise(n=n()) %>% 
   filter(n > 1)
 if(nrow(dupes)) {
@@ -143,16 +146,34 @@ summarydata <- left_join(summarydata, valvemap, by=c("MPVPosition", "valvemaprow
 printlog("Number of samples for each core:")
 print(summarydata %>% group_by(CORE) %>% summarise(n()) %>% as.data.frame())
 
+summarydata %>%   # save a list of samples and corresponding cores
+  select(DATETIME, MPVPosition, CORE) %>% 
+  save_data(fname="samplelist.csv")
+
 printlog("Summaries for max_CH4 and max_CO2:")
 summary(summarydata$max_CO2)
 summary(summarydata$max_CH4)
 
-core_na <- filter(summarydata, is.na(CORE))
-printlog("NOTE:", nrow(core_na), "samples have no matching core numbers; removing")
-save_data(core_na, scriptfolder = FALSE)
+printlog("Checking for orphan samples...")
+orphan_samples <- filter(summarydata, is.na(CORE))
+if(nrow(orphan_samples)) {
+  printlog("NOTE:", nrow(orphan_samples), "samples have no matching core numbers")
+  save_data(orphan_samples)
 
-printlog("NOTE: cores in the valve map but not in the summary data:")
-print(setdiff(valvemap$CORE, summarydata$CORE))
+  printlog("Visualizing orphan samples...")
+  p <- ggplot(summarydata, aes(DATETIME, MPVPosition, color=!is.na(CORE)))
+  p <- p + geom_jitter() + scale_color_discrete("Has core number")
+  p <- p + ggtitle("Orphan samples (no matching date/valve info")
+  print(p)
+  save_plot("orphan_samples")
+}
+
+printlog("Checking for orphan cores...")
+orphan_cores <- setdiff(valvemap$CORE, summarydata$CORE)
+if(length(orphan_cores)) {
+  printlog("NOTE: cores in the valve map but not in the summary data:")
+  print(orphan_cores)
+}
 
 # Done! Drop unnecessary columns and save
 

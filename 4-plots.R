@@ -39,19 +39,19 @@ p <- p + facet_grid(STRUCTURE~WETTING)
 print(p)
 save_plot("QC_CH4_flux_distribution")
 
-p <- ggplot(sdata, aes(MOISTURE, CO2_flux_mgC_s, color=INPUT)) + geom_boxplot()
-p <- p + facet_grid(STRUCTURE~WETTING)
+p <- ggplot(sdata, aes(MOISTURE, CO2_flux_mgC_s, color=WETTING)) + geom_boxplot()
+p <- p + facet_grid(STRUCTURE~INPUT)
 print(p)
 save_plot("QC_CO2")
 
-p <- ggplot(sdata, aes(MOISTURE, CH4_flux_mgC_s, color=INPUT)) + geom_boxplot()
-p <- p + facet_grid(STRUCTURE~WETTING)
+p <- ggplot(sdata, aes(MOISTURE, CH4_flux_mgC_s, color=WETTING)) + geom_boxplot()
+p <- p + facet_grid(STRUCTURE~INPUT)
 print(p)
 save_plot("QC_CH4")
 
 # QC negative-flux data
-negs <- subset(sdata, CO2_flux_mgC_s < 0.0)
-rawdata_negs <- read_csv(RAWDATA_SAMPLES) %>% filter(samplenum %in% negs$samplenum)
+#negs <- subset(sdata, CO2_flux_mgC_s < 0.0)
+#rawdata_negs <- read_csv(RAWDATA_SAMPLES) %>% filter(samplenum %in% negs$samplenum)
 
 
 

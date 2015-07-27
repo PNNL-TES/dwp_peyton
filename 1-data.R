@@ -23,11 +23,12 @@ read_outputfile <- function(fqfn) {
   }
   
   d <- read.table(f, header=T)
+  
   print_dims(d)
   
   # Add ancillary data
   d$file <- basename(fqfn)
-#  d$dir <- dirname(fqfn)
+  #  d$dir <- dirname(fqfn)
   
   return(d)
 } # read_outputfile
@@ -44,7 +45,7 @@ process_directory <- function(input_path, tempfile) {
     if(f > 1 & ncol(d) != ncolumns)
       stop("Columns differ between files!")
     ncolumns <- ncol(d)
-
+    
     first <- !file.exists(tempfile)
     write.table(d, tempfile, row.names=FALSE, append=!first, col.names=first, sep=",")
   }
