@@ -1,2 +1,2 @@
 # dwp_peyton
-Core for processing Peyton's Picarro data from DWP.
+Code for processing Peyton's Picarro data (above/below wetting experiment) from DWP.
