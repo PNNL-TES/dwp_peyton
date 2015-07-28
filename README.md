@@ -1,2 +1,2 @@
 # dwp_peyton
-Code for processing Peyton's Picarro data (above/below wetting experiment) from DWP.
+Code for [@apeyton_smith](https://twitter.com/apeyton_smith) above/below wetting experiment, processing Picarro data from DWP soil samples.
