@@ -16,11 +16,7 @@ printlog("Welcome to", SCRIPTNAME)
 
 printlog("Reading in summary data...")
 fluxdata <- read_csv(summarydata)
-
-library(lubridate)
-fluxdata$DATETIME <- ymd_hms(fluxdata$DATETIME)
 print_dims(fluxdata)
-
 
 printlog("Computing fluxes...")
 # At this point, `fluxdata` has min and max CO2/CH4 concentrations, 
@@ -52,19 +48,19 @@ m_CH4 <- with(fluxdata, (max_CH4 - min_CH4) / (max_CH4_time - min_CH4_time))  # 
 fluxdata$V_cm3 <- V_cm3
 
 # Calculate mass-corrected respiration, µmol/g soil/s
-fluxdata$CO2_flux_umol_g_s <- m_CO2 / 1e6 * # from ppm/s to mole fraction/s
+fluxdata$CO2_flux_umol_g_s <- m_CO2 / 1 * # from ppm/s to µmol/s
   V_cm3 / fluxdata$DRYWT_SOIL_G * Pa / (R * Tair)
-fluxdata$CH4_flux_umol_g_s <- m_CH4 / 1e6 * # from ppm/s to mole fraction/s
+fluxdata$CH4_flux_umol_g_s <- m_CH4 / 1000 * # from ppb/s to µmol/s
   V_cm3 / fluxdata$DRYWT_SOIL_G * Pa / (R * Tair)
 
 # Calculate total flux of mg C/s
-fluxdata$CO2_flux_mgC_s <- with(fluxdata, CO2_flux_umol_g_s * DRYWT_SOIL_G) / # get rid of /g soil
+fluxdata$CO2_flux_mgC_day <- with(fluxdata, CO2_flux_umol_g_s * DRYWT_SOIL_G) / # get rid of /g soil
   1e6 * # to mol 
   12 *  # to g C
   1000 * # to mg C
   60 * 60 * 24 # to /day
 
-fluxdata$CH4_flux_mgC_s <- with(fluxdata, CH4_flux_umol_g_s * DRYWT_SOIL_G) / # get rid of /g soil
+fluxdata$CH4_flux_mgC_day <- with(fluxdata, CH4_flux_umol_g_s * DRYWT_SOIL_G) / # get rid of /g soil
   1e6 * # to mol 
   16 *  # to g C
   1000 *  # to mg C
