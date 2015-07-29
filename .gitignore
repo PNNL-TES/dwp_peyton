@@ -13,9 +13,6 @@ vignettes/*.html
 vignettes/*.pdf
 .Rproj.user
 
-# raw data
-data/
-
 # outputs
 outputs/
 *.html
