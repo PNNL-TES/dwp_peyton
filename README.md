@@ -1,7 +1,7 @@
 # dwp_peyton
-R code for [@apeyton_smith](https://twitter.com/apeyton_smith) above/below wetting experiment. This processing pipeline, starts with reading CO2/CH4 data as downloaded from the Picarro analyzer, processes it, computes mass-normalized fluxes and cumulative respired C, does some QC, and generates figures and statistics.
+R code for [@apeyton_smith](https://twitter.com/apeyton_smith) above/below wetting experiment. This pipeline starts with reading CO2/CH4 data as downloaded from the Picarro analyzer, processes it, computes mass-normalized fluxes and cumulative respired C, does some QC, and generates figures and statistics.
 
-This code makes heavy use of the [dplyr](https://github.com/hadley/dplyr) package. All scripts write log files that includes dates, package and R version numbers, diagnostics, etc. They are designed to be run in numerical order.
+This code makes heavy use of the [dplyr](https://github.com/hadley/dplyr) package. All scripts write log files that include dates, package and R version numbers, diagnostics, etc. They are designed to be run in numerical order.
 
 # What these scripts do
 ## `0-functions.R` 
@@ -23,10 +23,10 @@ This is the heart of the pipeline. It performs the following major steps:
 * Assign sample numbers. A *sample* is a group of gas concentration measurements made all on the same multiplexer valve and continuous in time
 * Compute elapsed seconds for each measurement in the sample; the first gets a value of 0.
 * Loads the *valve map*. This is a file that maps the valve numbers (`MPVPosition`) to actual experiment cores. A number of minor cleanup operations are performed on the map data, and a figure is generated for QC purposes (to help identify mis-assigned or missing cores, for example)
-* Compute summary statistics for each sample. This has the following substeps, each its own `dplyr` pipeline: (i) for each sample, find the minimum CO2 and CH4 concentrations observed within the first `MAX_MINCONC_TIME` seconds; (ii) find the maximum concentration of each gas that occurs after the minimum, but before `MAX_MAXCONC_TIME` seconds; (iii) compute the mean `DATETIME`, number of observations, etc.; (iv) using the date information and the valve number, match the sample to a row in the valve map.
+* Compute summary statistics for each sample. This has the following substeps, each its own `dplyr` pipeline: (i) for each sample, find the minimum CO2 and CH4 concentrations observed within the first `MAX_MINCONC_TIME` seconds; (ii) find the maximum concentration of each gas that occurs after the minimum, but before `MAX_MAXCONC_TIME` seconds; (iii) compute the mean `DATETIME`, number of observations, etc.; (iv) using the date information and the valve number, match the sample to a row in the valve map
 * Merge the summarized Picarro data and the valve map data
 * Compute `elapsed_minutes` *across* samples. Basically each core has a `STARTDATETIME` assigned to it in the valve map, and we compute how many minutes have elapsed since then
-* Print diagnostics and do some QC, in particular looking for orphan samples and/or orphan cores (data mismatches).
+* Print diagnostics and do some QC, in particular looking for orphan samples and/or orphan cores (data mismatches)
 * Write the final summarized data to `summarydata.csv`
 
 ## `3-fluxes.R` 
@@ -34,7 +34,7 @@ This is the heart of the pipeline. It performs the following major steps:
 This script computes actual carbon fluxes by gas.
 
 * Read in summary data written by the previous script
-* For each sample summary, uses the min/max gas concentrations and time to compute the flux this implies using the ideal gas law. This uses volume (dependent in part on headspace volume, as given in the valve map file), pressure, temperature, universal gas constant, and sample mass (also specified in the valve map data).
+* For each sample summary, uses the min/max gas concentrations and time to compute the flux this implies using the ideal gas law. This uses volume (dependent in part on headspace volume, as given in the valve map file), pressure, temperature, universal gas constant, and sample mass (also specified in the valve map data)
 * We compute the instantaneous flux both normalized (µmol/g soil/s) and absolute (mgC/hr), and then, based on `elapsed_minutes`, the cumulative emission for each gas
 * Write the final data to `fluxdata.csv`
 
