@@ -28,13 +28,6 @@ print_dims <- function(d, dname=deparse(substitute(d))) {
 } # print_dims
 
 # -----------------------------------------------------------------------------
-# Return matrix of memory consumption
-object_sizes <- function() {
-  rev(sort(sapply(ls(envir=.GlobalEnv), function(object.name) 
-    object.size(get(object.name)))))
-} # object_sizes
-
-# -----------------------------------------------------------------------------
 # Return output directory (perhaps inside a script-specific folder)
 # If caller specifies `scriptfolder=FALSE`, return OUTPUT_DIR
 # If caller specifies `scriptfolder=TRUE` (default), return OUTPUT_DIR/SCRIPTNAME
@@ -67,14 +60,6 @@ save_data <- function(df, fname=paste0(deparse(substitute(df)), ".csv"), scriptf
 } # save_data
 
 # -----------------------------------------------------------------------------
-# Open a netCDF file and return handle (using ncdf4 package)
-open_ncdf <- function(fn, datadir=".") {
-  fqfn <- file.path(datadir, fn)
-  printlog("Opening", fqfn)
-  nc_open(fqfn)
-} # open_ncdf
-
-# -----------------------------------------------------------------------------
 # Open a (possibly compressed) csv file and return data
 read_csv <- function(fn, datadir=".", ...) {
   if(is.null(datadir)) {  # NULL signifies absolute path
@@ -90,12 +75,6 @@ read_csv <- function(fn, datadir=".", ...) {
   }
   invisible(read.csv(fqfn, stringsAsFactors=F, ...))
 } # read_csv
-
-# -----------------------------------------------------------------------------
-# Read data from the clipboard
-paste_data <- function(header=TRUE) {
-  read.table(pipe("pbpaste"), header=header)
-} # paste_data
 
 # -----------------------------------------------------------------------------
 is_outlier <- function(x, devs=3.2) {
