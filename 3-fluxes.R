@@ -4,7 +4,7 @@
 source("0-functions.R")
 
 SCRIPTNAME  	<- "3-fluxes.R"
-summarydata      <- paste0(OUTPUT_DIR, "summarydata.csv")  # output from script 2
+summarydata      <- file.path(OUTPUT_DIR, "summarydata.csv")  # output from script 2
 
 
 # ==============================================================================
@@ -49,24 +49,39 @@ fluxdata$V_cm3 <- V_cm3
 
 # Calculate mass-corrected respiration, µmol/g soil/s
 fluxdata$CO2_flux_umol_g_s <- m_CO2 / 1 * # from ppm/s to µmol/s
-  V_cm3 / fluxdata$DRYWT_SOIL_G * Pa / (R * Tair)
+  V_cm3 / fluxdata$DRYWT_SOIL_G * Pa / (R * Tair) # ideal gas law
 fluxdata$CH4_flux_umol_g_s <- m_CH4 / 1000 * # from ppb/s to µmol/s
-  V_cm3 / fluxdata$DRYWT_SOIL_G * Pa / (R * Tair)
+  V_cm3 / fluxdata$DRYWT_SOIL_G * Pa / (R * Tair) # ideal gas law
 
 # Calculate total flux of mg C/s
-fluxdata$CO2_flux_mgC_day <- with(fluxdata, CO2_flux_umol_g_s * DRYWT_SOIL_G) / # get rid of /g soil
+fluxdata$CO2_flux_mgC_hr <- with(fluxdata, CO2_flux_umol_g_s * DRYWT_SOIL_G) / # get rid of /g soil
   1e6 * # to mol 
   12 *  # to g C
   1000 * # to mg C
-  60 * 60 * 24 # to /day
-
-fluxdata$CH4_flux_mgC_day <- with(fluxdata, CH4_flux_umol_g_s * DRYWT_SOIL_G) / # get rid of /g soil
+  60 * 60 # to /hr
+fluxdata$CH4_flux_mgC_hr <- with(fluxdata, CH4_flux_umol_g_s * DRYWT_SOIL_G) / # get rid of /g soil
   1e6 * # to mol 
   16 *  # to g C
   1000 *  # to mg C
-  60 * 60 * 24 # to /day
+  60 * 60 # to /hr
 
-fluxdata <- fluxdata[complete.cases(fluxdata),]
+# Compute cumulative C respired
+printlog("Computing cumulative C respired...")
+fd_notcum <- filter(fluxdata, elapsed_minutes < 0.0)
+fluxdata <- fluxdata %>%
+  filter(elapsed_minutes >= 0.0) %>%# & !is.na(CORE)) %>%
+  group_by(CORE, WETTING, MOISTURE, STRUCTURE) %>%
+  arrange(elapsed_minutes) %>%
+  mutate(CO2_flux_mgC = CO2_flux_mgC_hr * (elapsed_minutes - lag(elapsed_minutes)) / 60,
+         cumCO2_flux_mgC = c(0, cumsum(CO2_flux_mgC[-1])),
+         CH4_flux_mgC = CH4_flux_mgC_hr * (elapsed_minutes - lag(elapsed_minutes)) / 60,
+         cumCH4_flux_mgC = c(0, cumsum(CH4_flux_mgC[-1]))
+  ) %>%
+  bind_rows(fd_notcum) %>%
+  select(-CO2_flux_mgC, -CH4_flux_mgC, -STARTDATETIME) %>%
+  arrange(STARTDATE, CORE, WETTING, MOISTURE, STRUCTURE, elapsed_minutes)
+
+#fluxdata <- fluxdata[complete.cases(fluxdata),]
 
 save_data(fluxdata, scriptfolder = FALSE)
 

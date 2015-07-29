@@ -30,33 +30,33 @@ save_plot("QC_time_of_day")
 sdata <- subset(fluxdata, CORE != "Ambient")
 
 # Histograms of the flux numbers
-p <- ggplot(sdata, aes(x = CO2_flux_mgC_day)) + geom_histogram()
+p <- ggplot(sdata, aes(x = CO2_flux_mgC_hr)) + geom_histogram()
 p <- p + facet_grid(STRUCTURE~WETTING)
 print(p)
 save_plot("QC_CO2_flux_distribution")
-p <- ggplot(sdata, aes(x = CH4_flux_mgC_day)) + geom_histogram()
+p <- ggplot(sdata, aes(x = CH4_flux_mgC_hr)) + geom_histogram()
 p <- p + facet_grid(STRUCTURE~WETTING)
 print(p)
 save_plot("QC_CH4_flux_distribution")
 
-p <- ggplot(sdata, aes(MOISTURE, CO2_flux_mgC_day, color=WETTING)) + geom_boxplot()
+p <- ggplot(sdata, aes(MOISTURE, CO2_flux_mgC_hr, color=WETTING)) + geom_boxplot()
 p <- p + facet_grid(STRUCTURE~INPUT)
 print(p)
 save_plot("QC_CO2")
 
-p <- ggplot(sdata, aes(MOISTURE, CH4_flux_mgC_day, color=WETTING)) + geom_boxplot()
+p <- ggplot(sdata, aes(MOISTURE, CH4_flux_mgC_hr, color=WETTING)) + geom_boxplot()
 p <- p + facet_grid(STRUCTURE~INPUT)
 print(p)
 save_plot("QC_CH4")
 
 printlog("Naive statistical summary:")
-m_CO2 <- lm(CO2_flux_mgC_day ~ WETTING * STRUCTURE * INPUT * MOISTURE, data=fluxdata)
+m_CO2 <- lm(CO2_flux_mgC_hr ~ WETTING * STRUCTURE * INPUT * MOISTURE, data=fluxdata)
 print(summary(m_CO2))
-m_CH4 <- lm(CH4_flux_mgC_day ~ WETTING * STRUCTURE * INPUT * MOISTURE, data=fluxdata)
+m_CH4 <- lm(CH4_flux_mgC_hr ~ WETTING * STRUCTURE * INPUT * MOISTURE, data=fluxdata)
 print(summary(m_CH4))
 
 # QC negative-flux data
-#negs <- subset(sdata, CO2_flux_mgC_day < 0.0)
+#negs <- subset(sdata, CO2_flux_mgC_hr < 0.0)
 #rawdata_negs <- read_csv(RAWDATA_SAMPLES) %>% filter(samplenum %in% negs$samplenum)
 
 

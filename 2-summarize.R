@@ -7,7 +7,7 @@
 source("0-functions.R")
 
 SCRIPTNAME  	<- "2-summarize.R"
-RAWDATA      <- paste0(OUTPUT_DIR, "rawdata.csv.gz")  # output from script 1
+RAWDATA      <- file.path(OUTPUT_DIR, "rawdata.csv.gz")  # output from script 1
 
 library(stringr)
 
@@ -47,7 +47,6 @@ rawdata <- arrange(rawdata, DATETIME)
 printlog("Assigning sample numbers...")
 oldsampleflag <- with(rawdata, c(FALSE, MPVPosition[-length(MPVPosition)] == MPVPosition[-1]))
 rawdata$samplenum <- cumsum(!oldsampleflag)
-
 
 printlog("Computing elapsed seconds...")
 rawdata_samples <- rawdata %>%
@@ -100,7 +99,7 @@ matchfun <- function(DATETIME, MPVPosition) {
 printlog( "Computing summary statistics for each sample..." )
 # The window in which we look for min and max concentrations
 MAX_MINCONC_TIME <- 10  # the minimum concentration has to occur in first 10 s
-MAX_MAXCONC_TIME <- 45  # the maximum concentration can't occur in first 2 s
+MAX_MAXCONC_TIME <- 45  # the maximum concentration has to occur in first 45 s
 
 # We want to apply different criteria here, so three different pipelines
 # to compute the min and max gas concentrations
@@ -130,16 +129,6 @@ summarydata_maxCH4 <- rawdata_temp %>%
     max_CH4_time = nth(elapsed_seconds, which.max(CH4_dry))
   )
 
-# summarydata_max <- rawdata_samples %>%
-#   filter(elapsed_seconds >= MIN_MAXCONC_TIME) %>%
-#   group_by(samplenum) %>%
-#   summarise(
-#     max_CO2 = max(CO2_dry),
-#     max_CO2_time = nth(elapsed_seconds, which.max(CO2_dry)),
-#     max_CH4 = max(CH4_dry),
-#     max_CH4_time = nth(elapsed_seconds, which.max(CH4_dry))
-#   )
-# 
 summarydata_other <- rawdata_samples %>%
   group_by(samplenum) %>%
   summarise(
@@ -161,6 +150,16 @@ summarydata <- summarydata_other %>%
 
 printlog("Merging Picarro and mapping data...")
 summarydata <- left_join(summarydata, valvemap, by=c("MPVPosition", "valvemaprow"), all.x=TRUE)
+
+# At this point we want to compute elapsed_minutes. The zero mark
+# for this calculation is the STARTDATE + STARTTIME fields in the valve map
+summarydata$STARTDATETIME <- ymd_hm(paste(summarydata$STARTDATE, 
+                                          summarydata$STARTTIME), tz="America/Los_Angeles")
+printlog("Computing elapsed minutes...")
+summarydata <- summarydata %>%
+  group_by(STARTDATETIME) %>%
+  mutate(elapsed_minutes = as.numeric(DATETIME - STARTDATETIME) / 60)
+
 
 printlog("Number of samples for each core:")
 print(summarydata %>% group_by(CORE) %>% summarise(n()) %>% as.data.frame())
