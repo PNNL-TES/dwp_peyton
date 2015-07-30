@@ -49,6 +49,19 @@ p <- p + facet_grid(STRUCTURE~INPUT)
 print(p)
 save_plot("QC_CH4")
 
+p <- ggplot(subset(fluxdata, STRUCTURE != "Ambient"), aes(elapsed_minutes, CO2_flux_umol_g_s))
+p <- p + geom_line(aes(group=CORE, color=MOISTURE))
+p <- p + facet_grid(STRUCTURE ~ WETTING, scales="free")
+print(p)
+save_plot("QC_CO2_elapsed_minutes")
+
+p <- ggplot(subset(fluxdata, STRUCTURE != "Ambient"), aes(elapsed_minutes, CH4_flux_umol_g_s))
+p <- p + geom_line(aes(group=CORE, color=MOISTURE))
+p <- p + facet_grid(STRUCTURE ~ WETTING, scales="free")
+print(p)
+save_plot("QC_CH4_elapsed_minutes")
+
+
 printlog("Naive statistical summary:")
 m_CO2 <- lm(CO2_flux_mgC_hr ~ WETTING * STRUCTURE * INPUT * MOISTURE, data=fluxdata)
 print(summary(m_CO2))

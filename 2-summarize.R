@@ -115,7 +115,7 @@ summarydata_min <- rawdata_samples %>%
 
 # Now we want to look for the max concentration AFTER the minimum
 rawdata_temp <- rawdata_samples %>%
-  left_join(summarydata_min) 
+  left_join(summarydata_min, by="samplenum") 
 summarydata_maxCO2 <- rawdata_temp %>%
   filter(elapsed_seconds > min_CO2_time & elapsed_seconds < MAX_MAXCONC_TIME) %>%
   summarise(
@@ -129,6 +129,7 @@ summarydata_maxCH4 <- rawdata_temp %>%
     max_CH4_time = nth(elapsed_seconds, which.max(CH4_dry))
   )
 
+# Final pipeline: misc other data, and match up with valve map entries
 summarydata_other <- rawdata_samples %>%
   group_by(samplenum) %>%
   summarise(
@@ -144,9 +145,6 @@ summarydata <- summarydata_other %>%
   left_join(summarydata_min, by="samplenum") %>%
   left_join(summarydata_maxCO2, by="samplenum") %>% 
   left_join(summarydata_maxCH4, by="samplenum")
-# summarydata <- summarydata_other %>%
-#   left_join(summarydata_max, by="samplenum") %>% 
-#   left_join(summarydata_min, by="samplenum")
 
 printlog("Merging Picarro and mapping data...")
 summarydata <- left_join(summarydata, valvemap, by=c("MPVPosition", "valvemaprow"), all.x=TRUE)
@@ -158,7 +156,7 @@ summarydata$STARTDATETIME <- ymd_hm(paste(summarydata$STARTDATE,
 printlog("Computing elapsed minutes...")
 summarydata <- summarydata %>%
   group_by(STARTDATETIME) %>%
-  mutate(elapsed_minutes = as.numeric(DATETIME - STARTDATETIME) / 60)
+  mutate(elapsed_minutes = as.numeric(difftime(DATETIME, STARTDATETIME), units="mins"))
 
 
 printlog("Number of samples for each core:")
@@ -181,7 +179,7 @@ if(nrow(orphan_samples)) {
   printlog("Visualizing orphan samples...")
   p <- ggplot(summarydata, aes(DATETIME, MPVPosition, color=!is.na(CORE)))
   p <- p + geom_jitter() + scale_color_discrete("Has core number")
-  p <- p + ggtitle("Orphan samples (no matching date/valve info")
+  p <- p + ggtitle("Orphan samples (no matching date/valve info)")
   print(p)
   save_plot("orphan_samples")
 }
