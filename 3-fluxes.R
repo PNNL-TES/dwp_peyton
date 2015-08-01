@@ -83,7 +83,7 @@ fluxdata <- fluxdata %>%
 
 #fluxdata <- fluxdata[complete.cases(fluxdata),]
 
-save_data(fluxdata, scriptfolder = FALSE)
+save_data(fluxdata, scriptfolder=FALSE)
 
 printlog("All done with", SCRIPTNAME)
 print(sessionInfo())

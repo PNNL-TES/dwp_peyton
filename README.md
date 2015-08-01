@@ -40,5 +40,5 @@ This script computes actual carbon fluxes by gas.
 
 ## `4-plots.R` 
 
-This script makes a variety of plots: QC plots, histograms of the computed fluxes, flux comparisons broken down by various factors, and does a naive (currently) statistical summary, fitting a linear model using `WETTING`, `STRUCTURE`, etc.
+This script makes a variety of plots: QC plots, histograms of the computed fluxes, flux comparisons broken down by various factors. It also prints a naive statistical summary, fitting a linear model using `WETTING`, `STRUCTURE`, etc.
 
