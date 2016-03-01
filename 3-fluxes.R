@@ -69,16 +69,22 @@ fluxdata$CH4_flux_mgC_hr <- with(fluxdata, CH4_flux_umol_g_s * DRYWT_SOIL_G) / #
 printlog("Computing cumulative C respired...")
 fd_notcum <- filter(fluxdata, elapsed_minutes < 0.0)
 fluxdata <- fluxdata %>%
-  filter(elapsed_minutes >= 0.0) %>%# & !is.na(CORE)) %>%
+  filter(elapsed_minutes >= 0.0) %>%
+  
+  # Interpolate missing flux values
+  mutate(CO2_flux_mgC_hr_interp = approx(elapsed_minutes, CO2_flux_mgC_hr, xout = elapsed_minutes, rule = 2)$y,
+         CH4_flux_mgC_hr_interp = approx(elapsed_minutes, CH4_flux_mgC_hr, xout = elapsed_minutes, rule = 2)$y) %>%
+  
   group_by(CORE, WETTING, MOISTURE, STRUCTURE) %>%
   arrange(elapsed_minutes) %>%
-  mutate(CO2_flux_mgC = CO2_flux_mgC_hr * (elapsed_minutes - lag(elapsed_minutes)) / 60,
+  mutate(deltahrs = (elapsed_minutes - lag(elapsed_minutes)) / 60,
+         CO2_flux_mgC = CO2_flux_mgC_hr_interp * deltahrs,
          cumCO2_flux_mgC = c(0, cumsum(CO2_flux_mgC[-1])),
-         CH4_flux_mgC = CH4_flux_mgC_hr * (elapsed_minutes - lag(elapsed_minutes)) / 60,
+         CH4_flux_mgC = CH4_flux_mgC_hr_interp * deltahrs,
          cumCH4_flux_mgC = c(0, cumsum(CH4_flux_mgC[-1]))
   ) %>%
   bind_rows(fd_notcum) %>%
-  select(-CO2_flux_mgC, -CH4_flux_mgC, -STARTDATETIME) %>%
+  select(-CO2_flux_mgC, -CH4_flux_mgC, -STARTDATETIME, -deltahrs) %>%
   arrange(STARTDATE, CORE, WETTING, MOISTURE, STRUCTURE, elapsed_minutes)
 
 #fluxdata <- fluxdata[complete.cases(fluxdata),]
