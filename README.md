@@ -1,3 +1,7 @@
+This repository has been archived and is no longer maintained.
+The code is provided for historical reference and may contain unpatched or unknown vulnerabilities.
+It should not be used in production systems.
+
 # dwp_peyton
 R code for [@apeyton_smith](https://twitter.com/apeyton_smith) above/below wetting experiment. This pipeline starts with reading CO2/CH4 data as downloaded from the Picarro analyzer, processes it, computes mass-normalized fluxes and cumulative respired C, does some QC, and generates figures and statistics.
 
